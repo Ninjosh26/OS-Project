@@ -76,4 +76,5 @@ dw 0xaa55
 You can can then compile the program into a "bootable disk" by running `make` in the `start_running` directory. The file can then be started in the *qemu* emulator by using the `make run` command. You should now have a running OS!
 
 [Table of Contents](../README.md)
+
 [Next - Hello World!](../hello_world/README.md)
