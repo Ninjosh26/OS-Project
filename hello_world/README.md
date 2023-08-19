@@ -96,4 +96,4 @@ After running the machine code for this program, the result should be printing "
 
 [Previous - OS Start](../start_running/README.md)
 
-[Next - Hello World!](../hello_world/README.md)
+[Next - Reading from a Disk](../disk_reading/README.md)

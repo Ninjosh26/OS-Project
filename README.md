@@ -4,5 +4,6 @@ My goal is to build a semi-legitimate operating system to showcase and improve m
 ## Table of Contents
 - [OS Start - Get it Running](./start_running/README.md)
 - [Hello World!](./hello_world/README.md)
+- [Reading from a Disk](./disk_reading/README.md)
 - [Notes](./pages/)
     - [x86 Registers](./pages/registers.md)
