@@ -51,4 +51,4 @@ ebr_system_id:				db "FAT12"		; 8 bytes
 ## Disk Layout
 Now that our file system is setup, we need to know how to access different parts of the disk. Each disk has a column of plates referred to as **platters**. Each of these platters have 2 shafts, with a piece of metal at the head called the **head**. In traditional disks, this heads moves along the surface of the disk and translates the magnetic field into an electric current, reading from the disk. It can also write to the disk by supplying an electric current. Each platter can be divided into concentric circles called **tracks/cylinders**, and triangluar slices of the platter are called **sectors**. The head is allowed to move across the surface of the platter to access different track and sector combinations. This is why different parts of the disk can be accessed using a **head #**, **cylinder #**, and **sector #**.
 
-![Disk diagram](10_01_DiskMechanism.jpg)
+![Disk diagram](./images/10_01_DiskMechanism.jpg)
