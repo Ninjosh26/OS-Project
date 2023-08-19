@@ -26,9 +26,9 @@ bdb_sectors_per_cluster:	db 1
 bdb_reserved_sectors:		dw 1
 bdb_fat_count:			db 2
 bdb_dir_entries_count:		dw 0xe0
-bdb_total_sectors:		dw 2880			; 2880 * 512 = 1.44MB
-bdb_media_descriptor_type:	db 0xf0			; F0 = 3.5" floppy disk
-bdb_sectors_per_fat:		dw 9			; 9 sectors/FAT
+bdb_total_sectors:		dw 2880		; 2880 * 512 = 1.44MB
+bdb_media_descriptor_type:	db 0xf0		; F0 = 3.5" floppy disk
+bdb_sectors_per_fat:		dw 9		; 9 sectors/FAT
 bdb_sectors_per_track:		dw 18
 bdb_heads:			dw 2
 bdb_hidden_sectors:		dd 0
