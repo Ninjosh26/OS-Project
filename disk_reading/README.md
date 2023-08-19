@@ -25,12 +25,30 @@ bdb_bytes_per_sector:		dw 512
 bdb_sectors_per_cluster:	db 1
 bdb_reserved_sectors:		dw 1
 bdb_fat_count:			db 2
-bdb_dir_entries_count:		dw 0xe0
+bdb_dir_entries_count:		dw 0e0h
 bdb_total_sectors:		dw 2880		; 2880 * 512 = 1.44MB
-bdb_media_descriptor_type:	db 0xf0		; F0 = 3.5" floppy disk
+bdb_media_descriptor_type:	db 0f0h		; F0 = 3.5" floppy disk
 bdb_sectors_per_fat:		dw 9		; 9 sectors/FAT
 bdb_sectors_per_track:		dw 18
 bdb_heads:			dw 2
 bdb_hidden_sectors:		dd 0
 bdb_large_sector_count:		dd 0
+
 ```
+
+After that, we need to place the extended boot record. THis includes the drive number, a reserved byte, a signature of `0x28` or `0x29`, the volume ID (4 byte), the volume label (11 bytes), and the system ID (8 bytes) which should be `FAT12` padded with spaces. This is what my EBR looks like:
+
+```assembly
+; Extended boot record
+ebr_drive_number:			db 0			; 0x00 floppy, 0x80 hdd, useless
+					db 0			; Reserved
+ebr_signature:				db 29h
+ebr_volume_id:				db 12h, 34h, 56h, 78h	; Serial number, value doesn't matter
+ebr_volume_label:			db "NINJOSH OS "	; 11 bytes, padded with spaces
+ebr_system_id:				db "FAT12"		; 8 bytes
+```
+
+## Disk Layout
+Now that our file system is setup, we need to know how to access different parts of the disk. Each disk has a column of plates referred to as **platters**. Each of these platters have 2 shafts, with a piece of metal at the head called the **head**. In traditional disks, this heads moves along the surface of the disk and translates the magnetic field into an electric current, reading from the disk. It can also write to the disk by supplying an electric current. Each platter can be divided into concentric circles called **tracks/cylinders**, and triangluar slices of the platter are called **sectors**. The head is allowed to move across the surface of the platter to access different track and sector combinations. This is why different parts of the disk can be accessed using a **head #**, **cylinder #**, and **sector #**.
+
+![Disk diagram](10_01_DiskMechanism.jpg)
