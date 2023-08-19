@@ -17,6 +17,7 @@ puts:
 	; Save registers we will modify
 	push si
 	push ax
+	push bx
 
 .loop:
 	lodsb		; Loads next character in al
@@ -30,6 +31,7 @@ puts:
 	jmp .loop
 
 .done:
+	pop bx
 	pop ax
 	pop si
 	ret

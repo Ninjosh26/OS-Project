@@ -21,7 +21,7 @@ main:
     mov sp, 0x7c00      ; Stack grows downwards from where we are loaded in memory
 ```
 
-Now that we have these set up, we can write a function to print a string to the screen. We can do this by defining a function `puts` that prints the screen at location `ds:si`. Since we will need to continuously go through each character of the string, we will need to increase `si`. `ax` will also be necessary for printing the character, so that register will be used as well. Since we are using these registers, we need to save their values on the stack on the start to ensure that their state can be returned at the end.
+Now that we have these set up, we can write a function to print a string to the screen. We can do this by defining a function `puts` that prints the screen at location `ds:si`. Since we will need to continuously go through each character of the string, we will need to increase `si`. `ax` and `bx` will also be necessary for printing the character, so those registers will be used as well. Since we are using these registers, we need to save their values on the stack on the start to ensure that their state can be returned at the end.
 
 ```assembly
 ;
@@ -33,6 +33,7 @@ puts:
     ; Save registers we will modify
     push si
     push ax
+    push bx
 ```
 
 We then need to loop through each character and run the print character subroutine for each one. The print character subroutine requires that the character be stored in `al`. This can be done with lodsb, which automatically copies the byte from `ds:si` into `al`, then increments `si` by 1 byte. This works because each character is a byte long. Next, we need to check if the next character is null, since strings typically end with a null terminator to signify the end of the string. This tells us when to stop printing. We can do this by calling the `or` instruction between `al` and itself, since it will only evaluate to false if `al` is 0 (null terminator). After calling this instruction, the zero flag will be set. We can conditionally jump if the zero flag is set using the `jz` instruction. We can use this to exit the loop if the null terminator is reached. If we did not jump, that means the character was non-null and should be printed. We can then continue the loop in that case. When exiting the loop, the states of used registers should be return using the `pop` instruction.
@@ -50,6 +51,7 @@ puts:
     jmp .loop       ; If not null, continue loop
 
 .done:
+    pop bx
     pop ax
     pop si
     ret
