@@ -10,6 +10,8 @@ The portion of the operating system stored in the boot sector is often called th
 - Starts in 16-bit real mode
   - After switching to 32-bit protected mode, access to BIOS functionality is lost
 
+Starting from now, the bootloader will be kept in a separate folder than the kernel. For now, we will focus on getting the bootloader to read from the disk so that code beyond the boot sector can be loaded into memory and executed.
+
 ## Floppy Disks
 For storing the kernel, I will use a floppy disk storage system. This is because of the universal support on most architectures, and the FAT12 file system which is rather simple. In order to accomodate this, some changes were made to the `Makefile`. We added separate targets for building the kernel and bootloader binaries, and also changed the image to be built with a FAT12 file system. One thing to note is that the FAT12 file system requires that certain information be present at the start of the disk, so our previous method of starting the bootloader at the beginning of the disk will not work. This can actually be easily fixed however, as we can just add the necessary information to the start of our bootloader program. The first 3 bytes must disassemble to `JMP SHORT 3C NOP`. Next is the version of DOS, of which I will use `MSWIN4.1` for compatibility. After that is the bytes per sector, which is 512 for a standard floppy disk. There is also sectors per cluster, reserved sectors, FAT table count, number of directory entries, total number of sectors, media descriptor type, number of sectors per FAT, number of sectors per track, head count, hidden sector count and large sector count. This is the configuration I added before my main function:
 
@@ -87,6 +89,7 @@ lba_to_chs:
 	inc dx					; dx = LBA % sectors per track + 1 = sector number
 	mov cx, dx				; cx = sector number
 
+	xor dx, dx
 	div word [bdb_heads]			; ax = (LBA / sectors per track) / heads = cylinder number
 						; dx = (LBA / sectors per track) % heads = head number
 	mov dh, dl 			        ; dh = head
@@ -99,3 +102,138 @@ lba_to_chs:
 	pop ax
 	ret
 ```
+Now that the conversion is done, we can read a logical block from the disk. Given an LBA address, the number of sectors to read, the drive number, and the location to store the read data, we can write the following function:
+
+```assembly
+;
+; Reads sectors from a disk
+; Params:
+;	- ax: LBA address
+;	- cl: Number of sectors to read (up to 128)
+;	- dl: Drive number
+;	- es:bx: Memory address to store read data
+;
+disk_read:
+	push ax				; Save registers we will modify
+	push bx
+	push cx
+	push dx
+	push di
+
+	push cx				; Temporarily save cl
+	call lba_to_chs			; Compute CHS
+	pop ax				; al = number of sectors to read
+
+	mov ah, 02h
+	mov di, 3			; Retry count
+
+.retry:
+	pusha				; Save all registers, we don't know what BIOS does
+	stc 				; Set carry flag, some BIOSes don't set it
+	int 13h				; Carry flag cleared = success
+	jnc .done			; Jump if carry not set
+
+	; Read failed
+	popa
+	call disk_reset
+
+	dec di
+	test di, di
+	jnz .retry
+
+.fail:
+	; All attempts are exhausted
+	jmp floppy_error
+
+.done:
+	popa
+
+	pop di				; Restore registers modified
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+	ret
+
+;
+; Resets disk controller
+; Params:
+;	- dl: Drive number
+;
+disk_reset:
+	pusha
+	mov ah, 0
+	stc
+	int 13h
+	jc floppy_error
+	popa
+	ret
+```
+
+In our simulation, the disk is not likely to fail. For realistic floppy disks, the chance of a read failure is rather high, and as such the documentation suggests attempting to read at least 3 times. This is why there is a retry block for the actual disk read. If the disk fails to be read 3 times, then an error function is jumped to, which will print a message about the disk failure.
+
+```assembly
+;
+; Error handlers
+;
+floppy_error:
+	mov si, msg_read_failed
+	call puts
+	jmp wait_key_and_reboot
+
+wait_key_and_reboot:
+	mov ah, 0
+	int 16h						; Wait for key press
+	jmp 0ffffh:0				; Jump to beginning of BIOS, should reboot
+
+.halt:
+	cli
+	hlt
+
+...
+
+msg_hello: 				db "Hello world!", ENDL, 0
+msg_read_failed: 		db "Read from disk failed!", ENDL, 0
+```
+
+And with that, we can add our disk read function to the main.
+
+```assembly
+main:
+	; Set up data segments
+	mov ax, 0				; Can't write to ds/es directly
+	mov ds, ax
+	mov es, ax
+
+	; Setup stack
+	mov ss, ax
+	mov sp, 0x7c00				; Stack grows downwards from where we are loaded in memory
+
+	; Read something from floppy disk
+	; BIOS should set dl to drive number
+	mov [ebr_drive_number], dl
+
+	mov ax, 1				; LBA = 1, second sector from disk
+	mov cl, 1				; 1 sector to read
+	mov bx, 0x7e00				; Data should be after the bootloader
+	call disk_read
+
+	; Print message
+	mov si, msg_hello
+	call puts
+
+	cli
+	hlt
+```
+
+Notice how the `hlt` statements have an extra command before them: `cli`. This is just so interrupts are disabled, meaning that when the `hlt` instruction is reached, the CPU will not be able to handle the interrupt and return to the program. It is also important to note where the data is being read to. It is loaded into memory at `0x7e00`, which comes after the bootloader in memory. If we run the bootloader and check the disk, we can see that 1 sector of data gets read into the space directly after the bootloader.
+
+![floppy disk after disk read](./images/Screenshot%20from%202023-08-19%2023-22-59.png)
+
+Congratulations, you can now read from the disk!
+
+[Table of Contents](../README.md)
+
+[Previous - Hello World!](../hello_world/README.md)
+
+[Next - Reading from a Disk](../disk_reading/README.md)

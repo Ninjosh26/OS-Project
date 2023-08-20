@@ -66,7 +66,7 @@ puts:
 
 main:
 	; Set up data segments
-	mov ax, 0					; can't write to ds/es directly
+	mov ax, 0					; Can't write to ds/es directly
 	mov ds, ax
 	mov es, ax
 
@@ -87,7 +87,8 @@ main:
 	mov si, msg_hello
 	call puts
 
-	jmp $
+	cli
+	hlt
 
 
 ;
@@ -104,7 +105,8 @@ wait_key_and_reboot:
 	jmp 0ffffh:0				; Jump to beginning of BIOS, should reboot
 
 .halt:
-	jmp $
+	cli
+	hlt
 
 
 ;
@@ -130,8 +132,8 @@ lba_to_chs:
 
 	inc dx								; dx = LBA % sectors per track + 1 = sector number
 	mov cx, dx							; cx = sector number
-	xor dx, dx
 
+	xor dx, dx
 	div word [bdb_heads]				; ax = (LBA / sectors per track) / heads = cylinder number
 										; dx = (LBA / sectors per track) % heads = head number
 	mov dh, dl 							; dh = head
