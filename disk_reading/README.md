@@ -49,6 +49,53 @@ ebr_system_id:				db "FAT12"		; 8 bytes
 ```
 
 ## Disk Layout
-Now that our file system is setup, we need to know how to access different parts of the disk. Each disk has a column of plates referred to as **platters**. Each of these platters have 2 shafts, with a piece of metal at the head called the **head**. In traditional disks, this heads moves along the surface of the disk and translates the magnetic field into an electric current, reading from the disk. It can also write to the disk by supplying an electric current. Each platter can be divided into concentric circles called **tracks/cylinders**, and triangluar slices of the platter are called **sectors**. The head is allowed to move across the surface of the platter to access different track and sector combinations. This is why different parts of the disk can be accessed using a **head #**, **cylinder #**, and **sector #**.
+Now that our file system is setup, we need to know how to access different parts of the disk. Each disk has a column of plates referred to as **platters**. Each of these platters have 2 shafts, with a piece of metal at the head called the **head**. In traditional disks, this heads moves along the surface of the disk and translates the magnetic field into an electric current, reading from the disk. It can also write to the disk by supplying an electric current. Each platter can be divided into concentric circles called **tracks/cylinders**, and triangluar slices of the platter are called **sectors**. The head is allowed to move across the surface of the rotating platter to access different track and sector combinations. This is why different parts of the disk can be accessed using a **cylinder #**, **head #**, and **sector #**. This is called the **cylinder head sector (CHS) addressing scheme**.
 
 ![Disk diagram](./images/10_01_DiskMechanism.jpg)
+
+This scheme works, but is rather complicated for us, as we don't really need to worry about the physical locations of our data, but rather where our data is logically on the disk (beginning, middle, end). For this we can use the **logical block addresssing (LBA) scheme**. With this, only one number is needed to reference a block on the disk. Unfortunately, our BIOS only supports CHS addressing, so we will need to develop the conversion ourselves.
+
+### LBA to CHS Conversion
+In the CHS addressing scheme, cylinder and head indices start at 0, but the sector index starts at 1. We know the number of sectors per track/cylinder and the number of heads per cylinder. In logical block order, the sector increases by 1 each time, eventually resetting to 1. After going through all sectors in the cylinder-head group, the head is then increased, eventually resetting to 0. After going through all sectors in that cylinder, the cylinder is then increased. Using this we can achieve the following equations:
+
+```
+sector = (LBA % sectors per track) + 1
+head = (LBA / sectors per track) % heads
+cylinder = (LBA / sectors per track) / heads
+```
+
+Using this, we can write an assembly function as follows:
+
+```assembly
+;
+; Converts an LBA address to a CHS address
+; Params:
+;	- ax: LBA address
+; Returns:
+;	- cx [bits 0-5]: sector number
+;	- cx [bits 6-15]: cylinder number
+;	- dh: head number
+;
+lba_to_chs:
+	push ax
+	push dx
+
+	xor dx, dx				; dx = 0
+	div word [bdb_sectors_per_track]	; ax = LBA / sectors per track
+						; dx = LBA % sectors per track
+
+	inc dx					; dx = LBA % sectors per track + 1 = sector number
+	mov cx, dx				; cx = sector number
+
+	div word [bdb_heads]			; ax = (LBA / sectors per track) / heads = cylinder number
+						; dx = (LBA / sectors per track) % heads = head number
+	mov dh, dl 			        ; dh = head
+	mov ch, al				; ch = cylinder (lower 8 bits)
+	shl ah, 6
+	or cl, ah				; Put upper 2 bits of cylinder in CL
+	
+	pop ax
+	mov dl, al				; Restore dl
+	pop ax
+	ret
+```
